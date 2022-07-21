@@ -1,0 +1,176 @@
+#!/bin/bash
+
+set -euo pipefail
+
+declare timeout=3 watch=false
+
+help() {
+	echo "Usage: $(basename -- "$(readlink -f -- "$0")") [-c FILE] [-t SECONDS] [-w]"
+	echo
+	echo "An automatic matrix image uploader."
+	echo "The script uploads images from a folder on your computer to a specified Matrix room."
+	echo "You can also watch the folder for new images moved into it and upload them automatically."
+	echo "The files are deleted locally after uploading."
+	echo
+	echo "Options:"
+	column -t -s'|' <<-EOF
+		-c, --config|Path to config file.
+		-t, --timeout|Timeout between uploads in seconds.
+		-w, --watch|Watch for new files in directory.
+	EOF
+}
+
+die() {
+	echo "$*" >&2
+	exit 1
+}
+
+read_config() {
+	if [[ -f ${config_filepath:?} ]]; then
+		# shellcheck disable=SC1090
+		source -- <(grep -xP '^[A-Z_]+=.+$' -- "$config_filepath")
+	else
+		die "Can't read config file: $config_filepath"
+	fi
+	readonly ROOM_ID SERVER TOKEN DIR
+	if ! test_config; then
+		die "Config file is invalid."
+	fi
+}
+
+test_config() {
+	if [[ -d $DIR ]] && [[ -n $SERVER ]] && [[ $ROOM_ID =~ ^![a-zA-Z]+:[^:]+$ ]] && [[ $TOKEN =~ ^[0-9a-zA-Z_]+$ ]]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+upload_image() {
+	curl --silent \
+		--data-binary "@$image_filepath" \
+		--data-urlencode "filename=$image_filepath" \
+		--header "Accept: application/json" \
+		--header "Content-Type: ${mime_type:?}" \
+		--header "Authorization: Bearer $TOKEN" \
+		--request POST \
+		"https://$SERVER/_matrix/media/v3/upload"
+}
+
+delete_image() {
+	if gio trash -- "${image_filepath:?}" || trash-put -- "${image_filepath:?}"; then
+		echo "$image_filepath moved to trash."
+	elif [[ -f "${image_filepath:?}" ]]; then
+		if rm -- "${image_filepath:?}"; then
+			echo "'$image_filepath' deleted."
+		else
+			die "Error: $image_filepath wasn't deleted."
+		fi
+	fi
+
+}
+
+post_image() {
+	local content='{
+		"body": "<FILENAME>",
+		"info": {
+			"w": <WIDTH>,
+			"h": <HEIGHT>,
+			"mimetype": "<MIMETYPE>",
+			"size": <SIZE>,
+			"thumbnail_url": "<MXC>",
+			"thumbnail_info": {
+				"w": <WIDTH>,
+				"h": <HEIGHT>,
+				"mimetype": "<MIMETYPE>",
+				"size": <SIZE>
+			}
+		},
+		"msgtype": "m.image",
+		"url": "<MXC>"
+	}'
+	content=${content//<FILENAME>/${RANDOM}.${mime_type##*/}}
+	content=${content//<MXC>/$mxc}
+	content=${content//<MIMETYPE>/$mime_type}
+	content=${content//<SIZE>/$size}
+	content=${content//<WIDTH>/${w_h%,*}}
+	content=${content//<HEIGHT>/${w_h#*,}}
+	curl -s -X POST "https://${SERVER}/_matrix/client/v3/rooms/${ROOM_ID}/send/m.room.message" \
+		--header "Authorization: Bearer $TOKEN" \
+		--header "Accept: application/json" \
+		--header "Content-Type: application/json" \
+		-d "$content"
+}
+
+parse_cmd_opts() {
+	local config_filepath=${XDG_CONFIG_HOME:-$HOME/.config}/matrix-consume/config
+	while :; do
+		case ${1-} in
+		-h | --help)
+			help
+			exit
+			;;
+		-c | --config)
+			shift
+			config_filepath=${1:?Config path is not set.}
+			;;
+		-t | --timeout)
+			shift
+			timeout=${1:?Timeout is not set.}
+			;;
+		-w | --watch)
+			watch=true
+			;;
+		"")
+			break
+			;;
+		*)
+			die "Unknown command: '$1'."
+			;;
+		esac
+		shift
+	done
+	readonly timeout watch
+	read_config
+}
+
+handle_file() {
+	local mxc mime_type size w_h image_filepath
+
+	image_filepath="$(find "$DIR" -maxdepth 1 -type f -iregex '.*.\(jpg\|jpeg\|png\|gif\|webp\)' | shuf -n 1)"
+	if [[ -f $image_filepath ]]; then
+		w_h=$(identify -format '%w,%h' -- "$image_filepath")
+		size=$(du -Hb -- "$image_filepath" | cut -f 1)
+		mime_type=$(file -b --mime-type "$image_filepath")
+		mxc=$(upload_image | grep -Po '"content_uri":\s*"\Kmxc://[^"]+(?=")')
+		if [[ -n $mxc ]] && [[ $(post_image) == '{"event_id":"$'*'"}' ]]; then
+			echo "Uploaded $image_filepath"
+			delete_image
+		else
+			echo "Couldn't upload $image_filepath"
+		fi
+	else
+		echo "$DIR is empty. Nothing to upload."
+		return 1
+	fi
+}
+
+loop() {
+	while :; do
+		while handle_file; do
+			sleep "${timeout:?}s"
+		done
+		if [[ $watch == true ]]; then
+			inotifywait -e create,moved_to "$DIR" 2>/dev/null
+		else
+			exit
+		fi
+	done
+}
+
+main() {
+	parse_cmd_opts "$@"
+	loop
+}
+
+main "$@"
