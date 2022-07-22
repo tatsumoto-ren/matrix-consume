@@ -4,8 +4,12 @@ set -euo pipefail
 
 declare timeout=3 watch=false
 
+program() {
+	basename -- "$(readlink -f -- "$0")"
+}
+
 help() {
-	echo "Usage: $(basename -- "$(readlink -f -- "$0")") [-c FILE] [-t SECONDS] [-w]"
+	echo "Usage: $(program) [-c FILE] [-t SECONDS] [-w]"
 	echo
 	echo "An automatic matrix image uploader."
 	echo "The script uploads images from a folder on your computer to a specified Matrix room."
