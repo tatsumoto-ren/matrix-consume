@@ -3,6 +3,7 @@
 set -euo pipefail
 
 declare timeout=3 watch=false
+readonly lock=.matrix-consume.lock
 
 program() {
 	basename -- "$(readlink -f -- "$0")"
@@ -172,8 +173,17 @@ loop() {
 	done
 }
 
+dir_occupied() {
+	[[ -f "$DIR/$lock" ]] && kill -0 "$(cat -- "$DIR/$lock")"
+}
+
 main() {
 	parse_cmd_opts "$@"
+	if dir_occupied; then
+		die "There's already PID $(cat -- "$DIR/$lock") working in $DIR"
+	else
+		echo $$ > "$DIR/$lock"
+	fi
 	loop
 }
 
