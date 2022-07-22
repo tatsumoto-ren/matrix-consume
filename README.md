@@ -26,6 +26,10 @@ To consume a folder and exit, run:
 matrix-consume --config ~/.config/my-config
 ```
 
+`matrix-consume` leaves a *lock* file in the folder
+to ensure there's only one instance of the script working in it.
+Don't delete it manually.
+
 ## Autostart
 
 You can add matrix-consume to autostart (e.g., to `~/.xprofile`).
@@ -34,5 +38,5 @@ and uploads them to the Matrix room.
 After each uploaded image the scripts sleeps for `10` seconds.
 
 ```
-{ matrix-consume --config ~/.config/my-config --timeout 10 --watch | logger; } &
+{ matrix-consume --config ~/.config/my-config --timeout 10 --watch 2>&1 | logger; } &
 ```
