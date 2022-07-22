@@ -139,7 +139,7 @@ handle_file() {
 
 	image_filepath="$(find "$DIR" -maxdepth 1 -type f -iregex '.*.\(jpg\|jpeg\|png\|gif\|webp\)' | shuf -n 1)"
 	if [[ -f $image_filepath ]]; then
-		w_h=$(identify -format '%w,%h' -- "$image_filepath")
+		w_h=$(identify -format '%w,%h\n' -- "$image_filepath" | head -1)
 		size=$(du -Hb -- "$image_filepath" | cut -f 1)
 		mime_type=$(file -b --mime-type "$image_filepath")
 		mxc=$(upload_image | grep -Po '"content_uri":\s*"\Kmxc://[^"]+(?=")')
