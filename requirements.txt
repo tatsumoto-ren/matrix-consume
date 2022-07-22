@@ -1,0 +1,5 @@
+bash
+curl
+trash-cli
+imagemagick
+inotify-tools
