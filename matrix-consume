@@ -2,7 +2,12 @@
 
 set -euo pipefail
 
-declare timeout=3 watch=false
+declare \
+	timeout=3 \
+	watch=false \
+	action=loop \
+	config_filepath=${XDG_CONFIG_HOME:-$HOME/.config}/matrix-consume/config
+
 readonly lock=.matrix-consume.lock
 
 program() {
@@ -22,6 +27,7 @@ help() {
 		-c, --config|Path to config file.
 		-t, --timeout|Timeout between uploads in seconds.
 		-w, --watch|Watch for new files in directory.
+		--enable-autostart|Create a systemd unit file for the current user, enable it and exit.
 	EOF
 }
 
@@ -107,38 +113,6 @@ post_image() {
 		-d "$content"
 }
 
-parse_cmd_opts() {
-	local config_filepath=${XDG_CONFIG_HOME:-$HOME/.config}/matrix-consume/config
-	while :; do
-		case ${1-} in
-		-h | --help)
-			help
-			exit
-			;;
-		-c | --config)
-			shift
-			config_filepath=${1:?Config path is not set.}
-			;;
-		-t | --timeout)
-			shift
-			timeout=${1:?Timeout is not set.}
-			;;
-		-w | --watch)
-			watch=true
-			;;
-		"")
-			break
-			;;
-		*)
-			die "Unknown command: '$1'."
-			;;
-		esac
-		shift
-	done
-	readonly timeout watch
-	read_config
-}
-
 enable_autostart() {
 	local -r units_dir=~/.config/systemd/user
 	local -r unit_filepath="$units_dir/$(program)-$(tr -cd '[:alnum:]._-' <<<"${ROOM_ID:?}").service"
@@ -214,8 +188,38 @@ loop() {
 }
 
 main() {
-	parse_cmd_opts "$@"
-	loop
+	while :; do
+		case ${1-} in
+		-h | --help)
+			help
+			exit
+			;;
+		-c | --config)
+			shift
+			config_filepath=${1:?Config path is not set.}
+			;;
+		-t | --timeout)
+			shift
+			timeout=${1:?Timeout is not set.}
+			;;
+		-w | --watch)
+			watch=true
+			;;
+		--enable-autostart)
+			action=enable_autostart
+			;;
+		"")
+			break
+			;;
+		*)
+			die "Unknown command: '$1'."
+			;;
+		esac
+		shift
+	done
+	readonly config_filepath timeout watch action
+	read_config
+	"$action"
 }
 
 main "$@"
