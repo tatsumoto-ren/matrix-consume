@@ -160,7 +160,24 @@ handle_file() {
 	fi
 }
 
+is_dir_occupied() {
+	[[ -f "$DIR/$lock" ]] && kill -0 "$(cat -- "$DIR/$lock")" 2>/dev/null
+}
+
+mark_dir_occupied() {
+	echo $$ >"$DIR/$lock"
+}
+
+check_dir_occupied() {
+	if is_dir_occupied; then
+		die "There's already PID $(cat -- "$DIR/$lock") working in $DIR"
+	else
+		mark_dir_occupied
+	fi
+}
+
 loop() {
+	check_dir_occupied
 	while :; do
 		while handle_file; do
 			sleep "${timeout:?}s"
@@ -173,17 +190,8 @@ loop() {
 	done
 }
 
-dir_occupied() {
-	[[ -f "$DIR/$lock" ]] && kill -0 "$(cat -- "$DIR/$lock")"
-}
-
 main() {
 	parse_cmd_opts "$@"
-	if dir_occupied; then
-		die "There's already PID $(cat -- "$DIR/$lock") working in $DIR"
-	else
-		echo $$ > "$DIR/$lock"
-	fi
 	loop
 }
 
