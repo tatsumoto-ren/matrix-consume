@@ -40,3 +40,12 @@ After each uploaded image the scripts sleeps for `10` seconds.
 ```
 { matrix-consume --config ~/.config/my-config --timeout 10 --watch 2>&1 | logger; } &
 ```
+
+Alternatively, you can start the script with systemd.
+To create and enable a [per-user](https://wiki.archlinux.org/title/Systemd/User) systemd unit, run:
+
+```
+matrix-consume --timeout 10 --config ~/.config/my-other-config --enable-autostart
+```
+
+You can create systemd units for each config file you have.
