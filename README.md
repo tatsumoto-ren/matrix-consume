@@ -49,3 +49,4 @@ matrix-consume --timeout 10 --config ~/.config/my-other-config --enable-autostar
 ```
 
 You can create systemd units for each config file you have.
+To start all systemd units, run `systemctl --user --all start 'matrix-consume-*'`
