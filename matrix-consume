@@ -8,7 +8,9 @@ declare \
 	action=loop \
 	config_filepath=${XDG_CONFIG_HOME:-$HOME/.config}/matrix-consume/config
 
-readonly lock=.matrix-consume.lock
+readonly \
+	lock=.matrix-consume.lock \
+	units_dir=${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user
 
 program() {
 	basename -- "$(readlink -f -- "$0")"
@@ -113,9 +115,12 @@ post_image() {
 		-d "$content"
 }
 
+unit_filename() {
+	echo "$(program)-$(tr -cd '[:alnum:]._-' <<<"${ROOM_ID:?}").service"
+}
+
 enable_autostart() {
-	local -r units_dir=~/.config/systemd/user
-	local -r unit_filepath="$units_dir/$(program)-$(tr -cd '[:alnum:]._-' <<<"${ROOM_ID:?}").service"
+	local -r unit_filepath="$units_dir/$(unit_filename)"
 	local -r executable=$(readlink -f -- "$0")
 
 	mkdir -p -- "$units_dir"
