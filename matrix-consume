@@ -126,7 +126,7 @@ enable_autostart() {
 	mkdir -p -- "$units_dir"
 	cat <<-EOF >"$unit_filepath"
 		[Unit]
-		Description=Matrix Consume
+		Description=Matrix Consume for room $ROOM_ID
 		After=network.target
 
 		[Service]
