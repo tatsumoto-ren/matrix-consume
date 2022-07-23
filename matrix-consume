@@ -46,14 +46,14 @@ read_config() {
 	else
 		die "Can't read config file: $config_filepath"
 	fi
-	readonly ROOM_ID SERVER TOKEN DIR
+	readonly ROOM_ID TOKEN DIR SERVER=${SERVER#https://}
 	if ! test_config; then
 		die "Config file is invalid."
 	fi
 }
 
 test_config() {
-	if [[ -d $DIR ]] && [[ -n $SERVER ]] && [[ $ROOM_ID =~ ^![a-zA-Z]+:[^:]+$ ]] && [[ $TOKEN =~ ^[0-9a-zA-Z_]+$ ]]; then
+	if [[ -d $DIR ]] && [[ $SERVER == *.* ]] && [[ $ROOM_ID =~ ^![a-zA-Z]+:[^:]+$ ]] && [[ $TOKEN =~ ^[0-9a-zA-Z_]+$ ]]; then
 		return 0
 	else
 		return 1
