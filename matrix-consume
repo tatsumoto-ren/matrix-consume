@@ -139,6 +139,29 @@ parse_cmd_opts() {
 	read_config
 }
 
+enable_autostart() {
+	local -r units_dir=~/.config/systemd/user
+	local -r unit_filepath="$units_dir/$(program)-$(tr -cd '[:alnum:]._-' <<<"${ROOM_ID:?}").service"
+	local -r executable=$(readlink -f -- "$0")
+
+	mkdir -p -- "$units_dir"
+	cat <<-EOF >"$unit_filepath"
+		[Unit]
+		Description=Matrix Consume
+		After=network.target
+
+		[Service]
+		ExecStart=/usr/bin/bash "$executable" -c "$config_filepath" -w -t "$timeout"
+
+		[Install]
+		WantedBy=default.target
+	EOF
+	echo "Created unit file $unit_filepath"
+	systemctl --user daemon-reload
+	systemctl --user enable "$(basename -- "$unit_filepath")"
+	echo "Run 'systemctl --user start $(basename -- "$unit_filepath")' to start it now."
+}
+
 handle_file() {
 	local mxc mime_type size w_h image_filepath
 
@@ -152,7 +175,7 @@ handle_file() {
 			echo "Uploaded $image_filepath"
 			delete_image
 		else
-			echo "Couldn't upload $image_filepath"
+			die "Couldn't upload $image_filepath"
 		fi
 	else
 		echo "$DIR is empty. Nothing to upload."
