@@ -30,6 +30,7 @@ help() {
 		-t, --timeout|Timeout between uploads in seconds.
 		-w, --watch|Watch for new files in directory.
 		--enable-autostart|Create a systemd unit file for the current user, enable it and exit.
+		--disable-autostart|Disable a systemd unit file for the current user, stop if running, and delete the unit file.
 	EOF
 }
 
@@ -141,6 +142,14 @@ enable_autostart() {
 	echo "Run 'systemctl --user start ${unit_filepath##*/}' to start it now."
 }
 
+disable_autostart() {
+	local -r unit_filepath="$units_dir/$(unit_filename)"
+	systemctl --user disable "${unit_filepath##*/}"
+	systemctl --user stop "${unit_filepath##*/}"
+	rm -- "$unit_filepath"
+	echo "Disabled autostart, stopped service, removed service file."
+}
+
 handle_file() {
 	local mxc mime_type size w_h image_filepath
 
@@ -212,6 +221,9 @@ main() {
 			;;
 		--enable-autostart)
 			action=enable_autostart
+			;;
+		--disable-autostart)
+			action=disable_autostart
 			;;
 		"")
 			break
