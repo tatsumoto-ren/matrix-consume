@@ -7,7 +7,8 @@ After an image is uploaded, it is moved to trash.
 The script can wait for new images to be moved to the folder,
 thus acting as a daemon.
 
-By default, there's a 3 seconds timeout between uploads, but it can be changed.
+You can set a timeout between uploads in seconds.
+The script will sleep after uploading each image.
 
 ## How to use
 
@@ -45,7 +46,7 @@ Alternatively, you can start the script with systemd.
 To create and enable a [per-user](https://wiki.archlinux.org/title/Systemd/User) systemd unit, run:
 
 ```
-matrix-consume --timeout 10 --config ~/.config/my-other-config --enable-autostart
+matrix-consume --config ~/.config/my-other-config --enable-autostart
 ```
 
 You can create systemd units for each config file you have.
