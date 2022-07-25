@@ -157,7 +157,7 @@ enable_autostart() {
 	echo "Created unit file $unit_filepath"
 	systemctl --user daemon-reload
 	systemctl --user enable "${unit_filepath##*/}"
-	echo "Run 'systemctl --user start ${unit_filepath##*/}' to start it now."
+	echo "Run 'systemctl --user --all start ${unit_filepath##*/}' to start it now."
 }
 
 disable_autostart() {
