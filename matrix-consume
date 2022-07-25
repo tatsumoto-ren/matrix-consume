@@ -46,17 +46,27 @@ read_config() {
 		server=${server#https://} \
 		timeout=${op_timeout:-${timeout:-3}} \
 		watch=${op_watch:-${watch:-false}}
-
-	if ! test_config; then
-		die "Config file is invalid."
-	fi
+	check_config
 }
 
-test_config() {
-	if [[ -d $dir ]] && [[ $server == *.* ]] && [[ $room_id =~ ^![a-zA-Z]+:[^:]+$ ]] && [[ $token =~ ^[0-9a-zA-Z_]+$ ]] && [[ $timeout =~ [0-9]+ ]]; then
-		return 0
-	else
-		return 1
+check_config() {
+	if [[ $watch != true ]] && [[ $watch != false ]]; then
+		die "'watch' should be set to 'true' or 'false'."
+	fi
+	if ! [[ -d $dir ]]; then
+		die "Can't locate directory $dir"
+	fi
+	if ! [[ $server == *.* ]]; then
+		die "Invalid server address"
+	fi
+	if ! [[ $room_id =~ ^![a-zA-Z]+:[^:]+$ ]]; then
+		die "Invalid room id, should be like this: '!UoSbpJOhdaqhNldLDv:server.domain'"
+	fi
+	if ! [[ $token =~ ^[0-9a-zA-Z_]+$ ]]; then
+		die "Access token should contain only alphanumeric characters."
+	fi
+	if ! [[ $timeout =~ [0-9]+ ]]; then
+		die "Set timeout to a number, in seconds."
 	fi
 }
 
