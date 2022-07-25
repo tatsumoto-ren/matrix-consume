@@ -2,11 +2,6 @@
 
 set -euo pipefail
 
-declare \
-	timeout=3 \
-	watch=false \
-	config_filepath=${XDG_CONFIG_HOME:-$HOME/.config}/matrix-consume/config
-
 readonly \
 	lock=.matrix-consume.lock \
 	units_dir=${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user
@@ -41,18 +36,24 @@ die() {
 read_config() {
 	if [[ -f ${config_filepath:?} ]]; then
 		# shellcheck disable=SC1090
-		source -- <(grep -xP '^[A-Z_]+=.+$' -- "$config_filepath")
+		source -- <(grep -xP '^[a-z_]+=.+$' -- "$config_filepath")
 	else
 		die "Can't read config file: $config_filepath"
 	fi
-	readonly ROOM_ID TOKEN DIR SERVER=${SERVER#https://}
+	readonly room_id \
+		token \
+		dir \
+		server=${server#https://} \
+		timeout=${op_timeout:-${timeout:-3}} \
+		watch=${op_watch:-${watch:-false}}
+
 	if ! test_config; then
 		die "Config file is invalid."
 	fi
 }
 
 test_config() {
-	if [[ -d $DIR ]] && [[ $SERVER == *.* ]] && [[ $ROOM_ID =~ ^![a-zA-Z]+:[^:]+$ ]] && [[ $TOKEN =~ ^[0-9a-zA-Z_]+$ ]]; then
+	if [[ -d $dir ]] && [[ $server == *.* ]] && [[ $room_id =~ ^![a-zA-Z]+:[^:]+$ ]] && [[ $token =~ ^[0-9a-zA-Z_]+$ ]] && [[ $timeout =~ [0-9]+ ]]; then
 		return 0
 	else
 		return 1
@@ -65,9 +66,9 @@ upload_image() {
 		--data-urlencode "filename=$image_filepath" \
 		--header "Accept: application/json" \
 		--header "Content-Type: ${mime_type:?}" \
-		--header "Authorization: Bearer $TOKEN" \
+		--header "Authorization: Bearer $token" \
 		--request POST \
-		"https://$SERVER/_matrix/media/v3/upload"
+		"https://$server/_matrix/media/v3/upload"
 }
 
 delete_image() {
@@ -108,8 +109,8 @@ post_image() {
 	content=${content//<SIZE>/$size}
 	content=${content//<WIDTH>/${w_h%,*}}
 	content=${content//<HEIGHT>/${w_h#*,}}
-	curl -s -X POST "https://${SERVER}/_matrix/client/v3/rooms/${ROOM_ID}/send/m.room.message" \
-		--header "Authorization: Bearer $TOKEN" \
+	curl -s -X POST "https://${server}/_matrix/client/v3/rooms/${room_id}/send/m.room.message" \
+		--header "Authorization: Bearer $token" \
 		--header "Accept: application/json" \
 		--header "Content-Type: application/json" \
 		-d "$content"
@@ -126,11 +127,11 @@ enable_autostart() {
 	mkdir -p -- "$units_dir"
 	cat <<-EOF >"$unit_filepath"
 		[Unit]
-		Description=Matrix Consume for room $ROOM_ID
+		Description=Matrix Consume for room $room_id
 		After=network.target
 
 		[Service]
-		ExecStart=/usr/bin/bash "$executable" -c "$config_filepath" -w -t "$timeout"
+		ExecStart="$executable" -c "$config_filepath" -w
 
 		[Install]
 		WantedBy=default.target
@@ -152,7 +153,7 @@ disable_autostart() {
 handle_file() {
 	local mxc mime_type size w_h image_filepath
 
-	image_filepath="$(find "$DIR" -maxdepth 1 -type f -iregex '.*.\(jpg\|jpeg\|png\|gif\|webp\)' | shuf -n 1)"
+	image_filepath="$(find "$dir" -maxdepth 1 -type f -iregex '.*.\(jpg\|jpeg\|png\|gif\|webp\)' | shuf -n 1)"
 	if [[ -f $image_filepath ]]; then
 		w_h=$(identify -format '%w,%h\n' -- "$image_filepath" | head -1)
 		size=$(du -Hb -- "$image_filepath" | cut -f 1)
@@ -165,22 +166,22 @@ handle_file() {
 			die "Couldn't upload $image_filepath"
 		fi
 	else
-		echo "$DIR is empty. Nothing to upload."
+		echo "$dir is empty. Nothing to upload."
 		return 1
 	fi
 }
 
 is_dir_occupied() {
-	[[ -f "$DIR/$lock" ]] && kill -0 "$(cat -- "$DIR/$lock")" 2>/dev/null
+	[[ -f "$dir/$lock" ]] && kill -0 "$(cat -- "$dir/$lock")" 2>/dev/null
 }
 
 mark_dir_occupied() {
-	echo $$ >"$DIR/$lock"
+	echo $$ >"$dir/$lock"
 }
 
 check_dir_occupied() {
 	if is_dir_occupied; then
-		die "There's already PID $(cat -- "$DIR/$lock") working in $DIR"
+		die "There's already PID $(cat -- "$dir/$lock") working in $dir"
 	else
 		mark_dir_occupied
 	fi
@@ -189,11 +190,14 @@ check_dir_occupied() {
 loop() {
 	check_dir_occupied
 	while :; do
+		if ! [[ -d $dir ]]; then
+			die "$dir disappeared. Exiting."
+		fi
 		while handle_file; do
 			sleep "${timeout:?}s"
 		done
 		if [[ $watch == true ]]; then
-			inotifywait -e create,moved_to "$DIR" 2>/dev/null
+			inotifywait -e create,moved_to "$dir" 2>/dev/null
 		else
 			exit
 		fi
@@ -213,10 +217,10 @@ main() {
 			;;
 		-t | --timeout)
 			shift
-			timeout=${1:?Timeout is not set.}
+			local -r op_timeout=${1:?Timeout is not set.}
 			;;
 		-w | --watch)
-			watch=true
+			local -r op_watch=true
 			;;
 		--enable-autostart)
 			local -r main_action=enable_autostart
@@ -233,7 +237,7 @@ main() {
 		esac
 		shift
 	done
-	readonly config_filepath timeout watch
+	readonly config_filepath=${config_filepath:-${XDG_CONFIG_HOME:-$HOME/.config}/matrix-consume/config}
 	read_config
 	"${main_action:-loop}"
 }
