@@ -117,7 +117,7 @@ post_image() {
 }
 
 unit_filename() {
-	echo "$(program)-$(tr -cd '[:alnum:]._-' <<<"${ROOM_ID:?}").service"
+	tr -cd '[:alnum:]._-' <<<"$(program)-${room_id:?}.service"
 }
 
 enable_autostart() {
