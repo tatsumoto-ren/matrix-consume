@@ -5,7 +5,6 @@ set -euo pipefail
 declare \
 	timeout=3 \
 	watch=false \
-	action=loop \
 	config_filepath=${XDG_CONFIG_HOME:-$HOME/.config}/matrix-consume/config
 
 readonly \
@@ -220,10 +219,10 @@ main() {
 			watch=true
 			;;
 		--enable-autostart)
-			action=enable_autostart
+			local -r main_action=enable_autostart
 			;;
 		--disable-autostart)
-			action=disable_autostart
+			local -r main_action=disable_autostart
 			;;
 		"")
 			break
@@ -234,9 +233,9 @@ main() {
 		esac
 		shift
 	done
-	readonly config_filepath timeout watch action
+	readonly config_filepath timeout watch
 	read_config
-	"$action"
+	"${main_action:-loop}"
 }
 
 main "$@"
