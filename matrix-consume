@@ -120,7 +120,15 @@ unit_filename() {
 	tr -cd '[:alnum:]._-' <<<"$(program)-${room_id:?}.service"
 }
 
+check_systemctl() {
+	if ! command -v systemctl >/dev/null 2>&1; then
+		die "This system doesn't appear to have systemctl."
+	fi
+}
+
 enable_autostart() {
+	check_systemctl
+
 	local -r unit_filepath="$units_dir/$(unit_filename)"
 	local -r executable=$(readlink -f -- "$0")
 
@@ -143,6 +151,8 @@ enable_autostart() {
 }
 
 disable_autostart() {
+	check_systemctl
+
 	local -r unit_filepath="$units_dir/$(unit_filename)"
 	systemctl --user disable "${unit_filepath##*/}"
 	systemctl --user stop "${unit_filepath##*/}"
