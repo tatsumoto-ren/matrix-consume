@@ -42,7 +42,7 @@ read_config() {
 	fi
 	readonly room_id \
 		token \
-		dir \
+		dir=${dir%/} \
 		server=${server#https://} \
 		timeout=${op_timeout:-${timeout:-3}} \
 		watch=${op_watch:-${watch:-false}}
@@ -171,23 +171,25 @@ disable_autostart() {
 }
 
 handle_file() {
-	local mxc mime_type size w_h image_filepath
+	local -r image_filepath=${1:?}
 
-	image_filepath="$(find "$dir" -maxdepth 1 -type f -iregex '.*.\(jpg\|jpeg\|png\|gif\|webp\)' | shuf -n 1)"
-	if [[ -f $image_filepath ]]; then
-		w_h=$(identify -format '%w,%h\n' -- "$image_filepath" | head -1)
-		size=$(du -Hb -- "$image_filepath" | cut -f 1)
-		mime_type=$(file -b --mime-type "$image_filepath")
-		mxc=$(upload_image | grep -Po '"content_uri":\s*"\Kmxc://[^"]+(?=")')
+	if ! [[ -f $image_filepath ]]; then
+		die "$image_filepath is not a file."
+	fi
+
+	local -r mime_type=$(file -b --mime-type -- "$image_filepath")
+
+	if [[ $image_filepath =~ \.(jpe?g|png|gif|webp)$ ]] && [[ $mime_type == image/* ]]; then
+		local -r w_h=$(identify -format '%w,%h\n' -- "$image_filepath" | head -1)
+		local -r size=$(du -Hb -- "$image_filepath" | cut -f 1)
+		local -r mxc=$(upload_image | grep -Po '"content_uri":\s*"\Kmxc://[^"]+(?=")')
+
 		if [[ -n $mxc ]] && [[ $(post_image) == '{"event_id":"$'*'"}' ]]; then
 			echo "Uploaded $image_filepath"
 			delete_image
 		else
 			die "Couldn't upload $image_filepath"
 		fi
-	else
-		echo "$dir is empty. Nothing to upload."
-		return 1
 	fi
 }
 
@@ -207,20 +209,26 @@ check_dir_occupied() {
 	fi
 }
 
+find_files(){
+	find "$dir" -maxdepth 1 -type f -printf '%f\n'
+}
+
+monitor_folder() {
+	inotifywait --monitor --quiet --event close_write,moved_to --format '%f' -- "$dir"
+}
+
+stream_files() {
+	find_files | shuf
+	if [[ $watch == true ]]; then
+		monitor_folder
+	fi
+}
+
 loop() {
 	check_dir_occupied
-	while :; do
-		if ! [[ -d $dir ]]; then
-			die "$dir disappeared. Exiting."
-		fi
-		while handle_file; do
-			sleep "${timeout:?}s"
-		done
-		if [[ $watch == true ]]; then
-			inotifywait -e create,moved_to "$dir" 2>/dev/null
-		else
-			exit
-		fi
+	stream_files | while read -r filename; do
+		handle_file "$dir/$filename"
+		sleep "${timeout:?}s"
 	done
 }
 
