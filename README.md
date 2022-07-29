@@ -12,7 +12,7 @@ The script will sleep after uploading each image.
 
 ## How to use
 
-0) Install [requirements](requirements.txt) with `pacman`.
+0) Install [requirements](requirements.txt) with `pacman` or other package manager.
 1) Download the [script](matrix-consume), or clone the repo and run `make install`.
 2) Create a [config file](config.example).
 3) Run matrix-consume.
