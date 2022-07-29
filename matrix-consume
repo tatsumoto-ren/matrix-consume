@@ -83,15 +83,14 @@ upload_image() {
 
 delete_image() {
 	if gio trash -- "${image_filepath:?}" || trash-put -- "${image_filepath:?}"; then
-		echo "$image_filepath moved to trash."
+		echo "${image_filepath##*/} moved to trash."
 	elif [[ -f "${image_filepath:?}" ]]; then
 		if rm -- "${image_filepath:?}"; then
-			echo "'$image_filepath' deleted."
+			echo "${image_filepath##*/} deleted."
 		else
-			die "Error: $image_filepath wasn't deleted."
+			die "Error: ${image_filepath##*/} wasn't deleted."
 		fi
 	fi
-
 }
 
 post_image() {
@@ -185,10 +184,10 @@ handle_file() {
 		local -r mxc=$(upload_image | grep -Po '"content_uri":\s*"\Kmxc://[^"]+(?=")')
 
 		if [[ -n $mxc ]] && [[ $(post_image) == '{"event_id":"$'*'"}' ]]; then
-			echo "Uploaded $image_filepath"
+			echo "Uploaded ${image_filepath##*/}"
 			delete_image
 		else
-			die "Couldn't upload $image_filepath"
+			die "Couldn't upload ${image_filepath##*/}"
 		fi
 	fi
 }
