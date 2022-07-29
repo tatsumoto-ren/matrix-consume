@@ -1,6 +1,6 @@
 # matrix-consume
 
-An automatic matrix image uploader.
+An automatic matrix image uploader. Watch it at work on <a target="_blank" href="https://redirect.invidious.io/watch?v=XbXNPyK4WQ4"><img src="https://user-images.githubusercontent.com/69171671/115097010-4bd13c80-9f17-11eb-83e9-2583658f73bc.png" width="80px"></a>.
 
 `matrix-consume` uploads randomly selected images from a local folder to a specified Matrix room.
 After an image is uploaded, it is moved to trash.
