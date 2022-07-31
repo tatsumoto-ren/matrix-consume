@@ -19,7 +19,8 @@ help() {
 	echo "The files are deleted locally after uploading."
 	echo
 	echo "Options:"
-	column -t -s'|' <<-EOF
+	column -t -s'|' <<-'EOF'
+		-h, --help|display this help text and exit.
 		-c, --config|Path to config file.
 		-t, --timeout|Timeout between uploads in seconds.
 		-w, --watch|Watch for new files in directory.
