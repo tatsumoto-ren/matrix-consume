@@ -3,3 +3,4 @@ curl
 trash-cli
 imagemagick
 inotify-tools
+file
