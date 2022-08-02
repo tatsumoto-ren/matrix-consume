@@ -24,6 +24,7 @@ help() {
 		-c, --config|Path to config file.
 		-t, --timeout|Timeout between uploads in seconds.
 		-w, --watch|Watch for new files in directory.
+		-o, --one-shot|Upload one file and exit instead of uploading all files from directory.
 		--help-config|display config file help text and exit.
 		--enable-autostart|Create a systemd unit file for the current user, enable it and exit.
 		--disable-autostart|Disable a systemd unit file for the current user, stop if running, and delete the unit file.
@@ -41,6 +42,7 @@ help_config() {
 		socks5|Optional, can be set to a socks5 proxy. E.g, '127.0.0.1:9050'.
 		connect_timeout|Optional, curl connect timeout, in seconds. By default, 30 seconds.
 		max_time|Optional, curl maximum transfer time, in seconds. By default, 180 seconds.
+		one_shot|Optional, if 'true', upload one image and exit.
 	EOF
 }
 
@@ -64,7 +66,8 @@ read_config() {
 		watch=${op_watch:-${watch:-false}} \
 		socks5=${socks5-} \
 		connect_timeout=${connect_timeout:-30} \
-		max_time=${max_time:-180}
+		max_time=${max_time:-180} \
+		one_shot=${op_one_shot:-${one_shot:-false}}
 	check_config
 }
 
@@ -95,6 +98,9 @@ check_config() {
 	fi
 	if ! [[ $max_time =~ [0-9]+ ]]; then
 		die "Set 'max_time' to a number, in seconds."
+	fi
+	if [[ $one_shot != true ]] && [[ $one_shot != false ]]; then
+		die "'one_shot' should be set to 'true' or 'false'."
 	fi
 }
 
@@ -261,7 +267,11 @@ loop() {
 	stream_files | while read -r filename; do
 		if [[ -f "$dir/$filename" ]]; then
 			handle_file "$dir/$filename"
-			sleep "${timeout:?}s"
+			if [[ $one_shot == true ]]; then
+				exit
+			else
+				sleep "${timeout:?}s"
+			fi
 		fi
 	done
 }
@@ -287,6 +297,9 @@ main() {
 			;;
 		-w | --watch)
 			local -r op_watch=true
+			;;
+		-o | --one-shot)
+			local -r op_one_shot=true
 			;;
 		--enable-autostart)
 			local -r main_action=enable_autostart
