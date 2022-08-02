@@ -24,8 +24,23 @@ help() {
 		-c, --config|Path to config file.
 		-t, --timeout|Timeout between uploads in seconds.
 		-w, --watch|Watch for new files in directory.
+		--help-config|display config file help text and exit.
 		--enable-autostart|Create a systemd unit file for the current user, enable it and exit.
 		--disable-autostart|Disable a systemd unit file for the current user, stop if running, and delete the unit file.
+	EOF
+}
+
+help_config() {
+	echo "$(program) config:"
+	column -t -s'|' <<-'EOF'
+		token|Access token. In Element can be obtained by going to "Settings" > "Help & About".
+		server|Address of a Matrix server.
+		dir|Local directory to source images from.
+		timeout|Sleep time between uploads, in seconds.
+		watch|If 'true', wait for new files in the directory. Otherwise exit after all files have been uploaded.
+		socks5|Optional, can be set to a socks5 proxy. E.g, '127.0.0.1:9050'.
+		connect_timeout|Optional, curl connect timeout, in seconds. By default, 30 seconds.
+		max_time|Optional, curl maximum transfer time, in seconds. By default, 180 seconds.
 	EOF
 }
 
@@ -256,6 +271,10 @@ main() {
 		case ${1-} in
 		-h | --help)
 			help
+			exit
+			;;
+		--help-config)
+			help_config
 			exit
 			;;
 		-c | --config)
