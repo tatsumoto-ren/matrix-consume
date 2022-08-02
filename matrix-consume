@@ -37,7 +37,7 @@ die() {
 read_config() {
 	if [[ -f ${config_filepath:?} ]]; then
 		# shellcheck disable=SC1090
-		source -- <(grep -xP '^[a-z_]+=.+$' -- "$config_filepath")
+		source -- <(grep -xP '^[5a-z_]+=.+$' -- "$config_filepath")
 	else
 		die "Can't read config file: $config_filepath"
 	fi
@@ -46,7 +46,10 @@ read_config() {
 		dir=${dir%/} \
 		server=${server#https://} \
 		timeout=${op_timeout:-${timeout:-3}} \
-		watch=${op_watch:-${watch:-false}}
+		watch=${op_watch:-${watch:-false}} \
+		socks5=${socks5-} \
+		connect_timeout=${connect_timeout:-30} \
+		max_time=${max_time:-180}
 	check_config
 }
 
@@ -69,16 +72,33 @@ check_config() {
 	if ! [[ $timeout =~ [0-9]+ ]]; then
 		die "Set timeout to a number, in seconds."
 	fi
+	if [[ -n $socks5 ]] && [[ $socks5 != *:* ]]; then
+		die "Invalid socks5 proxy. Specify 'address:port', e.g. '127.0.0.1:9050'."
+	fi
+	if ! [[ $connect_timeout =~ [0-9]+ ]]; then
+		die "Set 'connect_timeout' to a number, in seconds."
+	fi
+	if ! [[ $max_time =~ [0-9]+ ]]; then
+		die "Set 'max_time' to a number, in seconds."
+	fi
+}
+
+_curl() {
+	curl \
+		--connect-timeout "$connect_timeout" \
+		--max-time "$max_time" \
+		--socks5-hostname "$socks5" \
+		"$@"
 }
 
 upload_image() {
-	curl --silent \
+	_curl --silent \
+		--request POST \
 		--data-binary "@$image_filepath" \
 		--data-urlencode "filename=$image_filepath" \
 		--header "Accept: application/json" \
 		--header "Content-Type: ${mime_type:?}" \
 		--header "Authorization: Bearer $token" \
-		--request POST \
 		"https://$server/_matrix/media/v3/upload"
 }
 
@@ -119,11 +139,13 @@ post_image() {
 	content=${content//<SIZE>/$size}
 	content=${content//<WIDTH>/${w_h%,*}}
 	content=${content//<HEIGHT>/${w_h#*,}}
-	curl -s -X POST "https://${server}/_matrix/client/v3/rooms/${room_id}/send/m.room.message" \
+	_curl --silent \
+		--request POST \
 		--header "Authorization: Bearer $token" \
 		--header "Accept: application/json" \
 		--header "Content-Type: application/json" \
-		-d "$content"
+		--data "$content" \
+		"https://${server}/_matrix/client/v3/rooms/${room_id}/send/m.room.message"
 }
 
 unit_filename() {
