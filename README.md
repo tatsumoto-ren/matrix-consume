@@ -51,3 +51,14 @@ matrix-consume --config ~/.config/my-other-config --enable-autostart
 
 You can create systemd units for each config file you have.
 To start all systemd units, run `systemctl --user --all start 'matrix-consume-*'`
+
+## One shot mode
+
+If you add `one_shot=true` to the config file
+or run `matrix-consume` with the `--one-shot` flag,
+it will upload a random image from the folder and exit.
+`watch` and `timeout` options will be ignored.
+You can use the one shot mode in combination with `cron`
+to handle longer wait intervals.
+For example, if you upload an image every hour or so,
+it makes little sense for the script to always run in the background.
