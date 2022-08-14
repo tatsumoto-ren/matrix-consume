@@ -116,7 +116,6 @@ upload_image() {
 	_curl --silent \
 		--request POST \
 		--data-binary "@$image_filepath" \
-		--data-urlencode "filename=$image_filepath" \
 		--header "Accept: application/json" \
 		--header "Content-Type: ${mime_type:?}" \
 		--header "Authorization: Bearer $token" \
