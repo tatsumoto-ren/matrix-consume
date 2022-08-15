@@ -62,3 +62,8 @@ matrix-consume --config ~/.config/my-other-config --systemd-init
 
 You can create systemd units for each config file you have.
 To start all systemd units, run `systemctl --user --all start 'matrix-consume-*'`
+
+For convenience, systemd timer files are also created.
+If you want to use a systemd timer as a replacement for cron,
+before enabling and starting the timer
+edit the corresponding `.service` file, set `Type=oneshot` and add `--one-shot` to run parameters.

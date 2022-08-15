@@ -168,8 +168,8 @@ post_image() {
 		"https://${server}/_matrix/client/v3/rooms/${room_id}/send/m.room.message"
 }
 
-unit_filename() {
-	tr -cd '[:alnum:]._-' <<<"$(program)-${room_id:?}.service"
+unit_name() {
+	tr -cd '[:alnum:]._-' <<<"$(program)-${room_id:?}"
 }
 
 check_systemctl() {
@@ -181,35 +181,61 @@ check_systemctl() {
 systemd_init() {
 	check_systemctl
 
-	local -r unit_filepath="$units_dir/$(unit_filename)"
+	local -r name=$(unit_name)
+	local -r unit_filepath=$units_dir/$name.service
+	local -r timer_filepath=$units_dir/$name.timer
 	local -r executable=$(readlink -f -- "$0")
 
 	mkdir -p -- "$units_dir"
+
 	cat <<-EOF >"$unit_filepath"
 		[Unit]
 		Description=Matrix Consume for room $room_id
 		After=network.target
 
 		[Service]
-		ExecStart="$executable" -c "$config_filepath" -w
+		Type=simple
+		ExecStart="$executable" -c "$config_filepath"
 
 		[Install]
 		WantedBy=default.target
 	EOF
-	echo "Created unit file $unit_filepath"
+	echo "Created unit file $unit_filepath."
+
+	cat <<-EOF >"$timer_filepath"
+		[Unit]
+		Description=Run Matrix Consume periodically for room $room_id.
+
+		[Timer]
+		OnBootSec=1min
+		OnUnitActiveSec=10min
+
+		[Install]
+		WantedBy=timers.target
+	EOF
+	echo "Created timer file $timer_filepath"
+
 	systemctl --user daemon-reload
-	systemctl --user enable "${unit_filepath##*/}"
-	echo "Run 'systemctl --user --all start ${unit_filepath##*/}' to start it now."
+
+	echo "Edit the files to adjust run parameters or timeouts."
+	echo "Use 'systemctl --user --all [start|enable] NAME.[timer|service]' to start or enable."
 }
 
 systemd_cleanup() {
 	check_systemctl
 
-	local -r unit_filepath="$units_dir/$(unit_filename)"
-	systemctl --user disable "${unit_filepath##*/}"
-	systemctl --user stop "${unit_filepath##*/}"
-	rm -- "$unit_filepath"
-	echo "Disabled autostart, stopped service, removed service file."
+	local -r unit_filepath=$units_dir/$(unit_name).service
+	local -r timer_filepath=${unit_filepath%.service}.timer
+
+	systemctl --user disable "${timer_filepath##*/}" || true
+	systemctl --user stop "${timer_filepath##*/}" || true
+
+	systemctl --user disable "${unit_filepath##*/}" || true
+	systemctl --user stop "${unit_filepath##*/}" || true
+
+	rm -v -- "$unit_filepath" "$timer_filepath" || true
+
+	echo "Done."
 }
 
 handle_file() {
