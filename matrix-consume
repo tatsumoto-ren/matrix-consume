@@ -45,12 +45,10 @@ help_config() {
 		dir|Local directory to source images from.
 		timeout|Sleep time between uploads. The number ends with 's' for seconds (the default), 'm' for minutes, 'h' for hours or 'd' for days.
 		watch|If 'true', wait for new files in the directory. Otherwise exit after all files have been uploaded.
-		socks5|Optional, can be set to a socks5 proxy. E.g, '127.0.0.1:9050'.
-		connect_timeout|Optional, curl connect timeout, in seconds. By default, 30 seconds.
-		max_time|Optional, curl maximum transfer time, in seconds. By default, 180 seconds.
 		one_shot|Optional, if 'true', upload one image and exit.
 		cwebp_convert|If 'true', images will be converted to webp before uploading.
 		cwebp_add_args|Additional arguments passed to cwebp, as a bash array.
+		curl_add_args|Additional arguments passed to curl, as a bash array.
 	EOF
 }
 
@@ -61,6 +59,7 @@ die() {
 
 read_config() {
 	cwebp_add_args=(-quiet -noalpha -qrange 70 95 -mt)
+	curl_add_args=(--connect-timeout 30 --max-time 180)
 
 	if [[ -f ${config_filepath:?} ]]; then
 		# shellcheck disable=SC1090
@@ -74,12 +73,10 @@ read_config() {
 		server=${server#https://} \
 		timeout=${op_timeout:-${timeout:-3}} \
 		watch=${op_watch:-${watch:-false}} \
-		socks5=${socks5-} \
-		connect_timeout=${connect_timeout:-30} \
-		max_time=${max_time:-180} \
 		one_shot=${op_one_shot:-${one_shot:-false}} \
 		cwebp_convert=${cwebp_convert:-false} \
-		cwebp_add_args
+		cwebp_add_args \
+		curl_add_args
 	check_config
 }
 
@@ -104,23 +101,10 @@ check_config() {
 	if ! [[ $timeout =~ [0-9]+[smhd]? ]]; then
 		die "Set timeout to a number, in seconds or with a suffix on the end."
 	fi
-	if [[ -n $socks5 ]] && [[ $socks5 != *:* ]]; then
-		die "Invalid socks5 proxy. Specify 'address:port', e.g. '127.0.0.1:9050'."
-	fi
-	if ! [[ $connect_timeout =~ [0-9]+ ]]; then
-		die "Set 'connect_timeout' to a number, in seconds."
-	fi
-	if ! [[ $max_time =~ [0-9]+ ]]; then
-		die "Set 'max_time' to a number, in seconds."
-	fi
 }
 
 _curl() {
-	curl \
-		--connect-timeout "$connect_timeout" \
-		--max-time "$max_time" \
-		--socks5-hostname "$socks5" \
-		"$@"
+	curl "${curl_add_args[@]}" "$@"
 }
 
 unit_name() {

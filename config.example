@@ -6,3 +6,4 @@ watch=false
 timeout=60s
 cwebp_convert=false
 cwebp_add_args=(-preset drawing -quiet -noalpha -qrange 70 95 -size 25000 -mt -pass 10 -m 6)
+curl_add_args=(--connect-timeout 30 --max-time 60 --socks5-hostname='127.0.0.1:9050')
