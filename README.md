@@ -54,7 +54,7 @@ After each uploaded image the scripts sleeps for `10` seconds.
 ```
 
 Alternatively, you can start the script with systemd.
-To create and enable a [per-user](https://wiki.archlinux.org/title/Systemd/User) systemd unit, run:
+To create a [per-user](https://wiki.archlinux.org/title/Systemd/User) systemd unit, run:
 
 ```
 matrix-consume --config ~/.config/my-other-config --systemd-init
