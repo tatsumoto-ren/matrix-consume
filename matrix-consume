@@ -49,6 +49,8 @@ help_config() {
 		connect_timeout|Optional, curl connect timeout, in seconds. By default, 30 seconds.
 		max_time|Optional, curl maximum transfer time, in seconds. By default, 180 seconds.
 		one_shot|Optional, if 'true', upload one image and exit.
+		cwebp_convert|If 'true', images will be converted to webp before uploading.
+		cwebp_add_args|Additional arguments passed to cwebp, as a bash array.
 	EOF
 }
 
@@ -58,6 +60,8 @@ die() {
 }
 
 read_config() {
+	cwebp_add_args=(-quiet -noalpha -qrange 70 95 -mt)
+
 	if [[ -f ${config_filepath:?} ]]; then
 		# shellcheck disable=SC1090
 		source -- <(grep -xP '^[5a-z_]+=.+$' -- "$config_filepath")
@@ -73,8 +77,9 @@ read_config() {
 		socks5=${socks5-} \
 		connect_timeout=${connect_timeout:-30} \
 		max_time=${max_time:-180} \
+		one_shot=${op_one_shot:-${one_shot:-false}} \
 		cwebp_convert=${cwebp_convert:-false} \
-		one_shot=${op_one_shot:-${one_shot:-false}}
+		cwebp_add_args
 	check_config
 }
 
@@ -264,7 +269,7 @@ handle_file() {
 }
 
 handle_file_webp() {
-	cwebp -o "$temp_webp_path" -- "${1:?}"
+	cwebp -o "$temp_webp_path" "${cwebp_add_args[@]}" -- "${1:?}"
 	handle_file "$temp_webp_path"
 }
 

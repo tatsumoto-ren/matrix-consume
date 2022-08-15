@@ -5,3 +5,4 @@ dir=~/Pictures/matrix
 watch=false
 timeout=60s
 cwebp_convert=false
+cwebp_add_args=(-preset drawing -quiet -noalpha -qrange 70 95 -size 25000 -mt -pass 10 -m 6)

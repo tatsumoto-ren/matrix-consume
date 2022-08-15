@@ -4,3 +4,4 @@ trash-cli
 imagemagick
 inotify-tools
 file
+libwebp (optional)
