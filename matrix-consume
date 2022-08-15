@@ -21,11 +21,11 @@ help() {
 	echo "Options:"
 	column -t -s'|' <<-'EOF'
 		-h, --help|display this help text and exit.
+		--help-config|display config file help text and exit.
 		-c, --config|Path to config file.
-		-t, --timeout|Timeout between uploads in seconds.
+		-t, --timeout|Timeout between uploads, e.g. 10s, 5m, 1h, etc.
 		-w, --watch|Watch for new files in directory.
 		-o, --one-shot|Upload one file and exit instead of uploading all files from directory.
-		--help-config|display config file help text and exit.
 		--systemd-init|Create systemd unit and timer files for the current user.
 		--systemd-cleanup|Disable systemd unit and timer files for the current user, stop if running, and delete the files.
 	EOF
@@ -37,7 +37,7 @@ help_config() {
 		token|Access token. In Element can be obtained by going to "Settings" > "Help & About".
 		server|Address of a Matrix server.
 		dir|Local directory to source images from.
-		timeout|Sleep time between uploads. The number can end with 's' for seconds (the default), 'm' for minutes, 'h' for hours or 'd' for days.
+		timeout|Sleep time between uploads. The number ends with 's' for seconds (the default), 'm' for minutes, 'h' for hours or 'd' for days.
 		watch|If 'true', wait for new files in the directory. Otherwise exit after all files have been uploaded.
 		socks5|Optional, can be set to a socks5 proxy. E.g, '127.0.0.1:9050'.
 		connect_timeout|Optional, curl connect timeout, in seconds. By default, 30 seconds.
@@ -248,10 +248,10 @@ handle_file() {
 		local -r mxc=$(upload_image | grep -Po '"content_uri":\s*"\Kmxc://[^"]+(?=")')
 
 		if [[ -n $mxc ]] && [[ $(post_image) == '{"event_id":"$'*'"}' ]]; then
-			echo "Uploaded ${image_filepath##*/}"
+			echo "Uploaded ${image_filepath##*/} to room $room_id"
 			delete_image
 		else
-			die "Couldn't upload ${image_filepath##*/}"
+			die "Couldn't upload ${image_filepath##*/} to room $room_id"
 		fi
 	fi
 }
