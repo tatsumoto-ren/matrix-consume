@@ -25,7 +25,7 @@ help() {
 	echo "The files are deleted locally after uploading."
 	echo
 	echo "Options:"
-	column -t -s'|' <<-'EOF'
+	column -N key,description -W description -d -t -s'|' <<-'EOF'
 		-h, --help|display this help text and exit.
 		--help-config|display config file help text and exit.
 		-c, --config|Path to config file.
@@ -39,7 +39,7 @@ help() {
 
 help_config() {
 	echo "$(program) config:"
-	column -t -s'|' <<-'EOF'
+	column -N key,description -W description -d -t -s'|' <<-'EOF'
 		token|Access token. In Element can be obtained by going to "Settings" > "Help & About".
 		server|Address of a Matrix server.
 		dir|Local directory to source images from.
