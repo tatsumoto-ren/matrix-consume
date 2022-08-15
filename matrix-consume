@@ -263,6 +263,11 @@ handle_file() {
 	fi
 }
 
+handle_file_webp() {
+	cwebp -o "$temp_webp_path" -- "${1:?}"
+	handle_file "$temp_webp_path"
+}
+
 is_dir_occupied() {
 	[[ -f "$dir/$lock" ]] && kill -0 "$(cat -- "$dir/$lock")" 2>/dev/null
 }
@@ -300,11 +305,6 @@ check_cwebp_installed() {
 	fi
 }
 
-handle_file_webp() {
-	cwebp -o "$temp_webp_path" -- "$1"
-	handle_file "$temp_webp_path"
-}
-
 get_file_handler() {
 	if [[ $cwebp_convert == true ]]; then
 		check_cwebp_installed
@@ -320,7 +320,9 @@ loop() {
 	local file_path
 	stream_files | while read -r file_path; do
 		if [[ -f $file_path ]]; then
-			"$file_handler" "$file_path" && delete_image "$file_path"
+			if "$file_handler" "$file_path"; then
+				delete_image "$file_path"
+			fi
 			if [[ $one_shot == true ]]; then
 				exit
 			else
