@@ -79,9 +79,11 @@ read_config() {
 }
 
 check_config() {
-	if [[ $watch != true ]] && [[ $watch != false ]]; then
-		die "'watch' should be set to 'true' or 'false'."
-	fi
+	for var in watch one_shot cwebp_convert; do
+		if [[ ${!var} != true ]] && [[ ${!var} != false ]]; then
+			die "'${!var}' should be set to 'true' or 'false'."
+		fi
+	done
 	if ! [[ -d $dir ]]; then
 		die "Can't locate directory $dir"
 	fi
@@ -105,9 +107,6 @@ check_config() {
 	fi
 	if ! [[ $max_time =~ [0-9]+ ]]; then
 		die "Set 'max_time' to a number, in seconds."
-	fi
-	if [[ $one_shot != true ]] && [[ $one_shot != false ]]; then
-		die "'one_shot' should be set to 'true' or 'false'."
 	fi
 }
 
