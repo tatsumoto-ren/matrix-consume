@@ -26,8 +26,8 @@ help() {
 		-w, --watch|Watch for new files in directory.
 		-o, --one-shot|Upload one file and exit instead of uploading all files from directory.
 		--help-config|display config file help text and exit.
-		--enable-autostart|Create a systemd unit file for the current user, enable it and exit.
-		--disable-autostart|Disable a systemd unit file for the current user, stop if running, and delete the unit file.
+		--systemd-init|Create systemd unit and timer files for the current user.
+		--systemd-cleanup|Disable systemd unit and timer files for the current user, stop if running, and delete the files.
 	EOF
 }
 
@@ -178,7 +178,7 @@ check_systemctl() {
 	fi
 }
 
-enable_autostart() {
+systemd_init() {
 	check_systemctl
 
 	local -r unit_filepath="$units_dir/$(unit_filename)"
@@ -202,7 +202,7 @@ enable_autostart() {
 	echo "Run 'systemctl --user --all start ${unit_filepath##*/}' to start it now."
 }
 
-disable_autostart() {
+systemd_cleanup() {
 	check_systemctl
 
 	local -r unit_filepath="$units_dir/$(unit_filename)"
@@ -300,11 +300,11 @@ main() {
 		-o | --one-shot)
 			local -r op_one_shot=true
 			;;
-		--enable-autostart)
-			local -r main_action=enable_autostart
+		--systemd-init)
+			local -r main_action=systemd_init
 			;;
-		--disable-autostart)
-			local -r main_action=disable_autostart
+		--systemd-cleanup)
+			local -r main_action=systemd_cleanup
 			;;
 		"")
 			break

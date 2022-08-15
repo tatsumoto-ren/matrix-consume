@@ -57,7 +57,7 @@ Alternatively, you can start the script with systemd.
 To create and enable a [per-user](https://wiki.archlinux.org/title/Systemd/User) systemd unit, run:
 
 ```
-matrix-consume --config ~/.config/my-other-config --enable-autostart
+matrix-consume --config ~/.config/my-other-config --systemd-init
 ```
 
 You can create systemd units for each config file you have.
