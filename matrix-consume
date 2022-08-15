@@ -112,62 +112,6 @@ _curl() {
 		"$@"
 }
 
-upload_image() {
-	_curl --silent \
-		--request POST \
-		--data-binary "@$image_filepath" \
-		--header "Accept: application/json" \
-		--header "Content-Type: ${mime_type:?}" \
-		--header "Authorization: Bearer $token" \
-		"https://$server/_matrix/media/v3/upload"
-}
-
-delete_image() {
-	if gio trash -- "${image_filepath:?}" || trash-put -- "${image_filepath:?}"; then
-		echo "${image_filepath##*/} moved to trash."
-	elif [[ -f "${image_filepath:?}" ]]; then
-		if rm -- "${image_filepath:?}"; then
-			echo "${image_filepath##*/} deleted."
-		else
-			die "Error: ${image_filepath##*/} wasn't deleted."
-		fi
-	fi
-}
-
-post_image() {
-	local content='{
-		"body": "<FILENAME>",
-		"info": {
-			"w": <WIDTH>,
-			"h": <HEIGHT>,
-			"mimetype": "<MIMETYPE>",
-			"size": <SIZE>,
-			"thumbnail_url": "<MXC>",
-			"thumbnail_info": {
-				"w": <WIDTH>,
-				"h": <HEIGHT>,
-				"mimetype": "<MIMETYPE>",
-				"size": <SIZE>
-			}
-		},
-		"msgtype": "m.image",
-		"url": "<MXC>"
-	}'
-	content=${content//<FILENAME>/${RANDOM}.${mime_type##*/}}
-	content=${content//<MXC>/$mxc}
-	content=${content//<MIMETYPE>/$mime_type}
-	content=${content//<SIZE>/$size}
-	content=${content//<WIDTH>/${w_h%,*}}
-	content=${content//<HEIGHT>/${w_h#*,}}
-	_curl --silent \
-		--request POST \
-		--header "Authorization: Bearer $token" \
-		--header "Accept: application/json" \
-		--header "Content-Type: application/json" \
-		--data "$content" \
-		"https://${server}/_matrix/client/v3/rooms/${room_id}/send/m.room.message"
-}
-
 unit_name() {
 	tr -cd '[:alnum:]._-' <<<"$(program)-${room_id:?}"
 }
@@ -204,7 +148,7 @@ systemd_init() {
 
 	cat <<-EOF >"$timer_filepath"
 		[Unit]
-		Description=Run Matrix Consume periodically for room $room_id.
+		Description=Run Matrix Consume periodically for room $room_id
 
 		[Timer]
 		OnBootSec=1min
@@ -238,6 +182,64 @@ systemd_cleanup() {
 	echo "Done."
 }
 
+upload_image() {
+	_curl --silent \
+		--request POST \
+		--data-binary "@$image_filepath" \
+		--header "Accept: application/json" \
+		--header "Content-Type: ${mime_type:?}" \
+		--header "Authorization: Bearer $token" \
+		"https://$server/_matrix/media/v3/upload"
+}
+
+post_image() {
+	local content='{
+		"body": "<FILENAME>",
+		"info": {
+			"w": <WIDTH>,
+			"h": <HEIGHT>,
+			"mimetype": "<MIMETYPE>",
+			"size": <SIZE>,
+			"thumbnail_url": "<MXC>",
+			"thumbnail_info": {
+				"w": <WIDTH>,
+				"h": <HEIGHT>,
+				"mimetype": "<MIMETYPE>",
+				"size": <SIZE>
+			}
+		},
+		"msgtype": "m.image",
+		"url": "<MXC>"
+	}'
+	content=${content//<FILENAME>/${RANDOM}.${mime_type##*/}}
+	content=${content//<MXC>/$mxc}
+	content=${content//<MIMETYPE>/$mime_type}
+	content=${content//<SIZE>/$size}
+	content=${content//<WIDTH>/${w_h%,*}}
+	content=${content//<HEIGHT>/${w_h#*,}}
+	_curl --silent \
+		--request POST \
+		--header "Authorization: Bearer $token" \
+		--header "Accept: application/json" \
+		--header "Content-Type: application/json" \
+		--data "$content" \
+		"https://${server}/_matrix/client/v3/rooms/${room_id}/send/m.room.message"
+}
+
+delete_image() {
+	local -r image_filepath=${1:?Image filepath is not provided.}
+
+	if gio trash -- "$image_filepath" || trash-put -- "$image_filepath"; then
+		echo "${image_filepath##*/} moved to trash."
+	elif [[ -f $image_filepath ]]; then
+		if rm -- "$image_filepath"; then
+			echo "${image_filepath##*/} deleted."
+		else
+			die "Error: ${image_filepath##*/} wasn't deleted."
+		fi
+	fi
+}
+
 handle_file() {
 	local -r image_filepath=${1:?}
 	local -r mime_type=$(file -b --mime-type -- "$image_filepath")
@@ -249,7 +251,6 @@ handle_file() {
 
 		if [[ -n $mxc ]] && [[ $(post_image) == '{"event_id":"$'*'"}' ]]; then
 			echo "Uploaded ${image_filepath##*/} to room $room_id"
-			delete_image
 		else
 			die "Couldn't upload ${image_filepath##*/} to room $room_id"
 		fi
@@ -273,11 +274,11 @@ check_dir_occupied() {
 }
 
 find_files() {
-	find "$dir" -maxdepth 1 -type f -printf '%f\n'
+	find "$dir" -maxdepth 1 -type f -print
 }
 
 monitor_folder() {
-	inotifywait --monitor --quiet --event close_write,moved_to --format '%f' -- "$dir"
+	inotifywait --monitor --quiet --event close_write,moved_to --format '%w%f' -- "$dir"
 }
 
 stream_files() {
@@ -289,9 +290,10 @@ stream_files() {
 
 loop() {
 	check_dir_occupied
-	stream_files | while read -r filename; do
-		if [[ -f "$dir/$filename" ]]; then
-			handle_file "$dir/$filename"
+	local file_path
+	stream_files | while read -r file_path; do
+		if [[ -f $file_path ]]; then
+			handle_file "$file_path" && delete_image "$file_path"
 			if [[ $one_shot == true ]]; then
 				exit
 			else
