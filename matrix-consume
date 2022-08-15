@@ -2,9 +2,15 @@
 
 set -euo pipefail
 
-readonly \
-	lock=.matrix-consume.lock \
-	units_dir=${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user
+lock=.matrix-consume.lock
+units_dir=${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user
+temp_webp_path=$(mktemp /tmp/matrix-consume-temp-XXXXXX --suffix=.webp)
+
+readonly lock units_dir temp_webp_path
+
+on_exit() {
+	rm -- "$temp_webp_path"
+}
 
 program() {
 	basename -- "$(readlink -f -- "$0")"
@@ -67,6 +73,7 @@ read_config() {
 		socks5=${socks5-} \
 		connect_timeout=${connect_timeout:-30} \
 		max_time=${max_time:-180} \
+		cwebp_convert=${cwebp_convert:-false} \
 		one_shot=${op_one_shot:-${one_shot:-false}}
 	check_config
 }
@@ -288,12 +295,33 @@ stream_files() {
 	fi
 }
 
+check_cwebp_installed() {
+	if ! cwebp -version >/dev/null 2>&1; then
+		die "cwebp is not installed."
+	fi
+}
+
+handle_file_webp() {
+	cwebp -o "$temp_webp_path" -- "$1"
+	handle_file "$temp_webp_path"
+}
+
+get_file_handler() {
+	if [[ $cwebp_convert == true ]]; then
+		check_cwebp_installed
+		echo handle_file_webp
+	else
+		echo handle_file
+	fi
+}
+
 loop() {
 	check_dir_occupied
+	local -r file_handler=$(get_file_handler)
 	local file_path
 	stream_files | while read -r file_path; do
 		if [[ -f $file_path ]]; then
-			handle_file "$file_path" && delete_image "$file_path"
+			"$file_handler" "$file_path" && delete_image "$file_path"
 			if [[ $one_shot == true ]]; then
 				exit
 			else
@@ -304,6 +332,7 @@ loop() {
 }
 
 main() {
+	trap on_exit HUP INT QUIT TERM PWR EXIT
 	while :; do
 		case ${1-} in
 		-h | --help)

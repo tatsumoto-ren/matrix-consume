@@ -4,3 +4,4 @@ room_id="!asfLdzLnOdGRkdPZWu:localhost.org"
 dir=~/Pictures/matrix
 watch=false
 timeout=60s
+cwebp_convert=false
