@@ -3,4 +3,4 @@ token="QGV4YW1wbGU6bG9jYWxob3N0.vRDLTgxefmKWQEtgGd"
 room_id="!asfLdzLnOdGRkdPZWu:localhost.org"
 dir=~/Pictures/matrix
 watch=false
-timeout=10
+timeout=60s

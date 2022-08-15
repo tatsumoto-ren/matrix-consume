@@ -11,7 +11,7 @@ program() {
 }
 
 help() {
-	echo "Usage: $(program) [-c FILE] [-t SECONDS] [-w]"
+	echo "Usage: $(program) [-c FILE] [-t NUMBER] [-w]"
 	echo
 	echo "An automatic matrix image uploader."
 	echo "The script uploads images from a folder on your computer to a specified Matrix room."
@@ -37,7 +37,7 @@ help_config() {
 		token|Access token. In Element can be obtained by going to "Settings" > "Help & About".
 		server|Address of a Matrix server.
 		dir|Local directory to source images from.
-		timeout|Sleep time between uploads, in seconds.
+		timeout|Sleep time between uploads. The number can end with 's' for seconds (the default), 'm' for minutes, 'h' for hours or 'd' for days.
 		watch|If 'true', wait for new files in the directory. Otherwise exit after all files have been uploaded.
 		socks5|Optional, can be set to a socks5 proxy. E.g, '127.0.0.1:9050'.
 		connect_timeout|Optional, curl connect timeout, in seconds. By default, 30 seconds.
@@ -87,8 +87,8 @@ check_config() {
 	if ! [[ $token =~ ^[0-9a-zA-Z_]+$ ]]; then
 		die "Access token should contain only alphanumeric characters."
 	fi
-	if ! [[ $timeout =~ [0-9]+ ]]; then
-		die "Set timeout to a number, in seconds."
+	if ! [[ $timeout =~ [0-9]+[smhd]? ]]; then
+		die "Set timeout to a number, in seconds or with a suffix on the end."
 	fi
 	if [[ -n $socks5 ]] && [[ $socks5 != *:* ]]; then
 		die "Invalid socks5 proxy. Specify 'address:port', e.g. '127.0.0.1:9050'."
@@ -269,7 +269,7 @@ loop() {
 			if [[ $one_shot == true ]]; then
 				exit
 			else
-				sleep "${timeout:?}s"
+				sleep "${timeout:?}"
 			fi
 		fi
 	done
