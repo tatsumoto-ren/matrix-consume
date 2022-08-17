@@ -235,26 +235,33 @@ delete_image() {
 	fi
 }
 
+get_mime_type() {
+	file -b --mime-type -- "$1"
+}
+
 handle_file() {
-	local -r image_filepath=${1:?}
-	local -r mime_type=$(file -b --mime-type -- "$image_filepath")
+	local -r image_filepath=${1:?} mime_type=${2:?}
 
-	if [[ $image_filepath =~ \.(jpe?g|png|gif|webp)$ ]] && [[ $mime_type == image/* ]]; then
-		local -r w_h=$(identify -format '%w,%h\n' -- "$image_filepath" | head -1)
-		local -r size=$(du -Hb -- "$image_filepath" | cut -f 1)
-		local -r mxc=$(upload_image | grep -Po '"content_uri":\s*"\Kmxc://[^"]+(?=")')
+	local -r w_h=$(identify -format '%w,%h\n' -- "$image_filepath" | head -1)
+	local -r size=$(du -Hb -- "$image_filepath" | cut -f 1)
+	local -r mxc=$(upload_image | grep -Po '"content_uri":\s*"\Kmxc://[^"]+(?=")')
 
-		if [[ -n $mxc ]] && [[ $(post_image) == '{"event_id":"$'*'"}' ]]; then
-			echo "Uploaded ${image_filepath##*/} to room $room_id"
-		else
-			die "Couldn't upload ${image_filepath##*/} to room $room_id"
-		fi
+	if [[ -n $mxc ]] && [[ $(post_image) == '{"event_id":"$'*'"}' ]]; then
+		echo "Uploaded ${image_filepath##*/} to room $room_id"
+	else
+		die "Couldn't upload ${image_filepath##*/} to room $room_id"
 	fi
 }
 
 handle_file_webp() {
-	cwebp -o "$temp_webp_path" "${cwebp_add_args[@]}" -- "${1:?}"
-	handle_file "$temp_webp_path"
+	local -r image_filepath=${1:?} mime_type=${2:?}
+
+	if [[ $mime_type != */webp ]]; then
+		cwebp -o "$temp_webp_path" "${cwebp_add_args[@]}" -- "$image_filepath"
+		handle_file "$temp_webp_path" "$(get_mime_type "$temp_webp_path")"
+	else
+		handle_file "$image_filepath" "$mime_type"
+	fi
 }
 
 is_dir_occupied() {
@@ -303,20 +310,30 @@ get_file_handler() {
 	fi
 }
 
+is_image() {
+	[[ $file_path =~ \.(jpe?g|png|gif|webp)$ ]] && [[ $mime_type == image/* ]]
+}
+
 loop() {
 	check_dir_occupied
 	local -r file_handler=$(get_file_handler)
-	local file_path
+	local file_path mime_type
 	stream_files | while read -r file_path; do
-		if [[ -f $file_path ]]; then
-			if "$file_handler" "$file_path"; then
-				delete_image "$file_path"
-			fi
-			if [[ $one_shot == true ]]; then
-				exit
-			else
-				sleep "${timeout:?}"
-			fi
+		if ! [[ -f $file_path ]]; then
+			continue
+		fi
+		mime_type=$(get_mime_type "$file_path")
+		if ! is_image; then
+			continue
+		fi
+
+		if "$file_handler" "$file_path" "$mime_type"; then
+			delete_image "$file_path"
+		fi
+		if [[ $one_shot == true ]]; then
+			exit
+		else
+			sleep "${timeout:?}"
 		fi
 	done
 }
