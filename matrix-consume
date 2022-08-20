@@ -49,6 +49,7 @@ help_config() {
 		cwebp_convert|If 'true', images will be converted to webp before uploading.
 		cwebp_add_args|Additional arguments passed to cwebp, as a bash array.
 		curl_add_args|Additional arguments passed to curl, as a bash array.
+		move_to|If set, files will be moved to this directory instead of Trash.
 	EOF
 }
 
@@ -75,6 +76,7 @@ read_config() {
 		watch=${op_watch:-${watch:-false}} \
 		one_shot=${op_one_shot:-${one_shot:-false}} \
 		cwebp_convert=${cwebp_convert:-false} \
+		move_to=${move_to-} \
 		cwebp_add_args \
 		curl_add_args
 	check_config
@@ -100,6 +102,14 @@ check_config() {
 	fi
 	if ! [[ $timeout =~ [0-9]+[smhd]? ]]; then
 		die "Set timeout to a number, in seconds or with a suffix on the end."
+	fi
+	if [[ -n $move_to ]]; then
+		if ! [[ -d $move_to ]]; then
+			die "'move_to' should be unset or point to a directory."
+		fi
+		if [[ $move_to -ef $dir ]]; then
+			die "'move_to' and 'dir' can't point to the same directory."
+		fi
 	fi
 }
 
@@ -235,6 +245,16 @@ delete_image() {
 	fi
 }
 
+move_image() {
+	local -r image_filepath=${1:?Image filepath is not provided.}
+
+	if mv -- "$image_filepath" "$move_to"; then
+		echo "${image_filepath##*/} moved to ${move_to##*/}."
+	else
+		die "Error: Couldn't move ${image_filepath##*/}."
+	fi
+}
+
 get_mime_type() {
 	file -b --mime-type -- "$1"
 }
@@ -310,13 +330,21 @@ get_file_handler() {
 	fi
 }
 
+get_file_cleaner() {
+	if [[ -d $move_to ]]; then
+		echo move_image
+	else
+		echo delete_image
+	fi
+}
+
 is_image() {
 	[[ $file_path =~ \.(jpe?g|png|gif|webp)$ ]] && [[ $mime_type == image/* ]]
 }
 
 loop() {
 	check_dir_occupied
-	local -r file_handler=$(get_file_handler)
+	local -r file_handler=$(get_file_handler) file_cleaner=$(get_file_cleaner)
 	local file_path mime_type
 	stream_files | while read -r file_path; do
 		if ! [[ -f $file_path ]]; then
@@ -328,7 +356,7 @@ loop() {
 		fi
 
 		if "$file_handler" "$file_path" "$mime_type"; then
-			delete_image "$file_path"
+			"$file_cleaner" "$file_path"
 		fi
 		if [[ $one_shot == true ]]; then
 			exit
