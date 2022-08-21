@@ -158,6 +158,7 @@ systemd_init() {
 		[Timer]
 		OnBootSec=1min
 		OnUnitActiveSec=10min
+		RandomizedDelaySec=1min
 
 		[Install]
 		WantedBy=timers.target
