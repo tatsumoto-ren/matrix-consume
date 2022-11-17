@@ -247,12 +247,17 @@ delete_image() {
 }
 
 move_image() {
-	local -r image_filepath=${1:?Image filepath is not provided.}
+	local -r source=${1:?Image filepath is not provided.}
+	local destination=$move_to/${source##*/}
 
-	if mv -- "$image_filepath" "$move_to"; then
-		echo "${image_filepath##*/} moved to ${move_to##*/}."
+	while [[ -f $destination ]]; do
+		destination=$move_to/$RANDOM.${source##*.}
+	done
+
+	if mv -- "$source" "$destination"; then
+		echo "${source##*/} moved to ${move_to##*/}."
 	else
-		die "Error: Couldn't move ${image_filepath##*/}."
+		die "Error: Couldn't move ${source##*/}."
 	fi
 }
 
