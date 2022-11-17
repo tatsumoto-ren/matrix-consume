@@ -286,7 +286,7 @@ handle_file_webp() {
 }
 
 is_dir_occupied() {
-	[[ -f "$dir/$lock" ]] && kill -0 "$(cat -- "$dir/$lock")" 2>/dev/null
+	[[ -f "$dir/$lock" ]] && pkill --signal 0 --pidfile "$dir/$lock" 2>/dev/null
 }
 
 mark_dir_occupied() {
