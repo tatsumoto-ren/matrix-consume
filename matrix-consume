@@ -144,7 +144,7 @@ systemd_init() {
 
 		[Service]
 		Type=simple
-		ExecStart="$executable" -c "$config_filepath"
+		ExecStart="$executable" -c "$(readlink -e "$config_filepath")"
 
 		[Install]
 		WantedBy=default.target
