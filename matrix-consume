@@ -117,8 +117,13 @@ _curl() {
 	curl "${curl_add_args[@]}" "$@"
 }
 
+profile_name() {
+	local name=${config_filepath##*/}
+	echo "${name%.*}"
+}
+
 unit_name() {
-	tr -cd '[:alnum:]._-' <<<"$(program)-${room_id:?}"
+	tr -cd '[:alnum:]._-' <<<"$(program)-$(profile_name)"
 }
 
 check_systemctl() {
@@ -184,6 +189,8 @@ systemd_cleanup() {
 	systemctl --user stop "${unit_filepath##*/}" || true
 
 	rm -v -- "$unit_filepath" "$timer_filepath" || true
+
+	systemctl --user daemon-reload
 
 	echo "Done."
 }
