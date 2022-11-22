@@ -198,6 +198,10 @@ upload_image() {
 		"https://$server/_matrix/media/v3/upload"
 }
 
+fake_name() {
+	echo "$(date '+%s')$(shuf -i 100-999 -n 1)"
+}
+
 post_image() {
 	local content='{
 		"body": "<FILENAME>",
@@ -217,7 +221,7 @@ post_image() {
 		"msgtype": "m.image",
 		"url": "<MXC>"
 	}'
-	content=${content//<FILENAME>/${RANDOM}.${mime_type##*/}}
+	content=${content//<FILENAME>/$(fake_name).${mime_type##*/}}
 	content=${content//<MXC>/$mxc}
 	content=${content//<MIMETYPE>/$mime_type}
 	content=${content//<SIZE>/$size}
